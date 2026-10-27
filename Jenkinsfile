@@ -26,7 +26,7 @@ pipeline {
               php:8.3-cli bash -lc '
                 set -e
                 apt-get update
-                apt-get install -y git unzip libzip-dev curl
+                apt-get install -y git unzip libzip-dev libsqlite3-dev curl
                 docker-php-ext-install pdo_sqlite zip
 
                 mkdir -p /tmp/app
