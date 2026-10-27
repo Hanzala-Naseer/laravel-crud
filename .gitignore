@@ -18,3 +18,7 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+# Local Kubernetes binaries
+/kubectl
+/minikube-linux-amd64

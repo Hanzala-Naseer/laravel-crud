@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laravel Task Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 750px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f4f6f9;
+            color: #222;
+        }
+
+        h1 { text-align: center; }
+
+        form, .task {
+            background: white;
+            padding: 18px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px #ddd;
+        }
+
+        input, textarea, button {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 10px;
+            margin: 7px 0;
+            font-size: 16px;
+        }
+
+        button {
+            cursor: pointer;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button.delete { background: #dc2626; }
+        button.edit { background: #15803d; }
+        #message { margin: 12px 0; }
+    </style>
+</head>
+<body>
+    <h1>Laravel Task Manager</h1>
+
+    <form id="task-form">
+        <h2 id="form-heading">Add a Task</h2>
+
+        <input type="text" id="title" placeholder="Task title" required>
+        <textarea id="description" placeholder="Task description" required></textarea>
+
+        <button type="submit">Save Task</button>
+        <button type="button" id="cancel-edit" hidden>Cancel Edit</button>
+    </form>
+
+    <p id="message"></p>
+    <section id="tasks"></section>
+
+    <script>
+        const API = '/api/tasks';
+        const form = document.getElementById('task-form');
+        const titleInput = document.getElementById('title');
+        const descriptionInput = document.getElementById('description');
+        const tasksContainer = document.getElementById('tasks');
+        const message = document.getElementById('message');
+        const cancelEdit = document.getElementById('cancel-edit');
+
+        let editingId = null;
+
+        async function request(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.text();
+                throw new Error(error || `HTTP ${response.status}`);
+            }
+
+            if (response.status === 204) return null;
+            return response.json();
+        }
+
+        async function loadTasks() {
+            try {
+                const tasks = await request(API);
+                tasksContainer.replaceChildren();
+
+                if (tasks.length === 0) {
+                    tasksContainer.textContent = 'No tasks yet. Add your first task!';
+                    return;
+                }
+
+                tasks.forEach(task => {
+                    const card = document.createElement('article');
+                    card.className = 'task';
+
+                    const heading = document.createElement('h3');
+                    heading.textContent = task.title;
+
+                    const description = document.createElement('p');
+                    description.textContent = task.description;
+
+                    const editButton = document.createElement('button');
+                    editButton.className = 'edit';
+                    editButton.textContent = 'Edit';
+                    editButton.onclick = () => startEdit(task);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'delete';
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.onclick = () => deleteTask(task.id);
+
+                    card.append(heading, description, editButton, deleteButton);
+                    tasksContainer.appendChild(card);
+                });
+            } catch (error) {
+                message.textContent = 'Could not load tasks: ' + error.message;
+            }
+        }
+
+        function startEdit(task) {
+            editingId = task.id;
+            titleInput.value = task.title;
+            descriptionInput.value = task.description;
+            document.getElementById('form-heading').textContent = 'Edit Task';
+            cancelEdit.hidden = false;
+        }
+
+        function resetForm() {
+            editingId = null;
+            form.reset();
+            document.getElementById('form-heading').textContent = 'Add a Task';
+            cancelEdit.hidden = true;
+        }
+
+        cancelEdit.addEventListener('click', resetForm);
+
+        form.addEventListener('submit', async event => {
+            event.preventDefault();
+
+            const payload = {
+                title: titleInput.value.trim(),
+                description: descriptionInput.value.trim()
+            };
+
+            try {
+                const url = editingId ? `${API}/${editingId}` : API;
+                const method = editingId ? 'PUT' : 'POST';
+
+                await request(url, {
+                    method,
+                    body: JSON.stringify(payload)
+                });
+
+                message.textContent = editingId
+                    ? 'Task updated successfully.'
+                    : 'Task added successfully.';
+
+                resetForm();
+                await loadTasks();
+            } catch (error) {
+                message.textContent = 'Could not save task: ' + error.message;
+            }
+        });
+
+        async function deleteTask(id) {
+            if (!confirm('Are you sure you want to delete this task?')) return;
+
+            try {
+                await request(`${API}/${id}`, { method: 'DELETE' });
+                message.textContent = 'Task deleted successfully.';
+                await loadTasks();
+            } catch (error) {
+                message.textContent = 'Could not delete task: ' + error.message;
+            }
+        }
+
+        loadTasks();
+    </script>
+</body>
+</html>

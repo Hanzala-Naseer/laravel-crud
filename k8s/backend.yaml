@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laravel-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: laravel-backend
+  template:
+    metadata:
+      labels:
+        app: laravel-backend
+    spec:
+      containers:
+        - name: laravel-backend
+          image: laravel-backend:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
+          env:
+            - name: APP_ENV
+              value: production
+            - name: APP_DEBUG
+              value: "false"
+            - name: APP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: laravel-app-secret
+                  key: APP_KEY
+            - name: APP_URL
+              value: http://laravel-backend-service
+            - name: DB_CONNECTION
+              value: mysql
+            - name: DB_HOST
+              value: mysql-service
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_DATABASE
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_PASSWORD
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: laravel-backend-service
+spec:
+  selector:
+    app: laravel-backend
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP
